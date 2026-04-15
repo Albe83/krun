@@ -75,3 +75,4 @@ Common `Ready` reasons:
 - Base sample: [`config/samples/roles_v1alpha1_ansiblerole.yaml`](../../config/samples/roles_v1alpha1_ansiblerole.yaml)
 - Progressive examples: [`docs/examples/ansiblerole`](../examples/ansiblerole/README.md)
 - Cross-resource composition examples: [`docs/examples/composition`](../examples/composition/README.md)
+- Domain class diagram: [`docs/crd/model.md`](./model.md)

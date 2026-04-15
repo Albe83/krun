@@ -38,6 +38,11 @@ Detailed references:
 - [`docs/crd/ansiblerole.md`](./docs/crd/ansiblerole.md)
 - [`docs/crd/ansibleblock.md`](./docs/crd/ansibleblock.md)
 
+## CRD Model
+
+Class diagram of CRDs and their relationships:
+- [`docs/crd/model.md`](./docs/crd/model.md)
+
 ## CI
 
 GitHub Actions build sanity workflow:
