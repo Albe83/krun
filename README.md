@@ -20,6 +20,15 @@ Key technical decisions are documented as ADRs in [`docs/adr`](./docs/adr/README
 
 Detailed reference for `AnsibleTask` fields and Ansible mappings: [`docs/crd/ansibletask.md`](./docs/crd/ansibletask.md).
 
+## CI
+
+GitHub Actions build sanity workflow:
+- [`build.yml`](./.github/workflows/build.yml)
+
+It validates:
+- `kubectl kustomize` rendering for `config/crd`, `config/samples`, and `config/default`
+- YAML sanity for `AnsibleTask` samples/examples (`kind`, required `spec.action`, and no `spec.name`)
+
 ## Examples
 
 Progressive `AnsibleTask` examples are available in [`docs/examples/ansibletask`](./docs/examples/ansibletask/README.md).

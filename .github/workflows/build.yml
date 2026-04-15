@@ -1,0 +1,66 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+    - main
+
+jobs:
+  build-sanity:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: v1.35.0
+
+    - name: Render CRD manifests
+      run: kubectl kustomize config/crd >/tmp/crd.yaml
+
+    - name: Render sample manifests
+      run: kubectl kustomize config/samples >/tmp/samples.yaml
+
+    - name: Render default manifests
+      run: kubectl kustomize config/default >/tmp/default.yaml
+
+    - name: Validate AnsibleTask YAML examples
+      run: |
+        python3 - <<'PY'
+        import glob
+        import yaml
+
+        paths = [
+            'config/samples/tasks_v1alpha1_ansibletask.yaml',
+            *sorted(glob.glob('docs/examples/ansibletask/*.yaml')),
+        ]
+
+        if not paths:
+            raise SystemExit('No YAML files found for validation')
+
+        for path in paths:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+
+            if not isinstance(data, dict):
+                raise SystemExit(f'{path}: top-level YAML must be an object')
+
+            if data.get('kind') != 'AnsibleTask':
+                raise SystemExit(f"{path}: kind must be 'AnsibleTask'")
+
+            spec = data.get('spec')
+            if not isinstance(spec, dict):
+                raise SystemExit(f'{path}: spec must be an object')
+
+            action = spec.get('action')
+            if not isinstance(action, str) or not action.strip():
+                raise SystemExit(f'{path}: spec.action is required and must be non-empty')
+
+            if 'name' in spec:
+                raise SystemExit(f'{path}: spec.name is not allowed, use metadata.name')
+
+        print(f'Validated {len(paths)} files')
+        PY
