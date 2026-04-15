@@ -54,4 +54,21 @@ rules:
       - patch
       - update
       - watch
+  ##
+  ## Rules for roles.krun.io/v1alpha1, Kind: AnsibleRole
+  ##
+  - apiGroups:
+      - roles.krun.io
+    resources:
+      - ansibleroles
+      - ansibleroles/status
+      - ansibleroles/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 # +kubebuilder:scaffold:rules

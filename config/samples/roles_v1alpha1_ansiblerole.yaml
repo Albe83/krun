@@ -1,0 +1,20 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  labels:
+    app.kubernetes.io/name: krun
+    app.kubernetes.io/managed-by: kustomize
+  name: ansiblerole-sample
+spec:
+  preTasks:
+  - id: pre-debug
+    task: ansibletask-sample
+  tasks:
+  - id: main-debug
+    task: ansibletask-sample
+  postTasks:
+  - id: post-debug
+    task: ansibletask-sample
+  handlers:
+  - id: handler-debug
+    task: ansibletask-sample

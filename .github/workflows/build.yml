@@ -31,16 +31,21 @@ jobs:
     - name: Render default manifests
       run: kubectl kustomize config/default >/tmp/default.yaml
 
-    - name: Validate AnsibleTask YAML examples
+    - name: Validate AnsibleTask and AnsibleRole YAML examples
       run: |
         python3 - <<'PY'
         import glob
         import yaml
 
-        paths = [
+        task_paths = [
             'config/samples/tasks_v1alpha1_ansibletask.yaml',
             *sorted(glob.glob('docs/examples/ansibletask/*.yaml')),
         ]
+        role_paths = [
+            'config/samples/roles_v1alpha1_ansiblerole.yaml',
+            *sorted(glob.glob('docs/examples/ansiblerole/*.yaml')),
+        ]
+        paths = task_paths + role_paths
 
         if not paths:
             raise SystemExit('No YAML files found for validation')
@@ -52,19 +57,46 @@ jobs:
             if not isinstance(data, dict):
                 raise SystemExit(f'{path}: top-level YAML must be an object')
 
-            if data.get('kind') != 'AnsibleTask':
-                raise SystemExit(f"{path}: kind must be 'AnsibleTask'")
+            kind = data.get('kind')
+            if kind not in {'AnsibleTask', 'AnsibleRole'}:
+                raise SystemExit(f"{path}: kind must be 'AnsibleTask' or 'AnsibleRole'")
 
             spec = data.get('spec')
             if not isinstance(spec, dict):
                 raise SystemExit(f'{path}: spec must be an object')
 
-            action = spec.get('action')
-            if not isinstance(action, str) or not action.strip():
-                raise SystemExit(f'{path}: spec.action is required and must be non-empty')
+            if kind == 'AnsibleTask':
+                action = spec.get('action')
+                if not isinstance(action, str) or not action.strip():
+                    raise SystemExit(f'{path}: spec.action is required and must be non-empty')
+                if 'name' in spec:
+                    raise SystemExit(f'{path}: spec.name is not allowed, use metadata.name')
 
-            if 'name' in spec:
-                raise SystemExit(f'{path}: spec.name is not allowed, use metadata.name')
+            if kind == 'AnsibleRole':
+                tasks = spec.get('tasks')
+                if not isinstance(tasks, list) or not tasks:
+                    raise SystemExit(f'{path}: spec.tasks is required and must be a non-empty array')
+
+                for section in ('preTasks', 'tasks', 'postTasks', 'handlers'):
+                    refs = spec.get(section, [])
+                    if refs is None:
+                        refs = []
+                    if not isinstance(refs, list):
+                        raise SystemExit(f'{path}: spec.{section} must be an array')
+
+                    seen_ids = set()
+                    for idx, ref in enumerate(refs):
+                        if not isinstance(ref, dict):
+                            raise SystemExit(f'{path}: spec.{section}[{idx}] must be an object')
+                        ref_id = ref.get('id')
+                        ref_task = ref.get('task')
+                        if not isinstance(ref_id, str) or not ref_id.strip():
+                            raise SystemExit(f'{path}: spec.{section}[{idx}].id is required and must be non-empty')
+                        if not isinstance(ref_task, str) or not ref_task.strip():
+                            raise SystemExit(f'{path}: spec.{section}[{idx}].task is required and must be non-empty')
+                        if ref_id in seen_ids:
+                            raise SystemExit(f'{path}: spec.{section} contains duplicated id value {ref_id!r}')
+                        seen_ids.add(ref_id)
 
         print(f'Validated {len(paths)} files')
         PY

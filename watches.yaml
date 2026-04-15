@@ -4,4 +4,9 @@
   group: tasks.krun.io
   kind: AnsibleTask
   role: ansibletask
+- version: v1alpha1
+  group: roles.krun.io
+  kind: AnsibleRole
+  role: ansiblerole
+  reconcilePeriod: 60s
 # +kubebuilder:scaffold:watch

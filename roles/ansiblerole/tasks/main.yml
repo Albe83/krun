@@ -1,0 +1,128 @@
+---
+# This role models role semantics only.
+# It validates AnsibleTask references and publishes acceptance status.
+
+- name: Build role sections with defaults
+  set_fact:
+    ansiblerole_sections:
+      preTasks: "{{ ansiblerole_spec.preTasks | default([]) }}"
+      tasks: "{{ ansiblerole_spec.tasks | default([]) }}"
+      postTasks: "{{ ansiblerole_spec.postTasks | default([]) }}"
+      handlers: "{{ ansiblerole_spec.handlers | default([]) }}"
+
+- name: Initialize validation errors
+  set_fact:
+    ansiblerole_validation_errors: []
+
+- name: Validate required tasks section
+  set_fact:
+    ansiblerole_validation_errors: "{{ ansiblerole_validation_errors + ['spec.tasks is required and must contain at least one item'] }}"
+  when: ansiblerole_sections.tasks | length == 0
+
+- name: Validate section item shape
+  set_fact:
+    ansiblerole_validation_errors: "{{ ansiblerole_validation_errors + [item.0.key ~ '[' ~ entry_index ~ '] must be an object with non-empty id and task'] }}"
+  vars:
+    entry_index: "{{ ansiblerole_shape_index | string }}"
+  loop: "{{ query('subelements', ansiblerole_sections | dict2items, 'value') }}"
+  loop_control:
+    index_var: ansiblerole_shape_index
+  when:
+  - item.1 is not mapping or item.1.id is not defined or item.1.task is not defined or (item.1.id | string | length) == 0 or (item.1.task | string | length) == 0
+
+- name: Validate unique ids per section
+  set_fact:
+    ansiblerole_validation_errors: "{{ ansiblerole_validation_errors + [item.key ~ ' contains duplicated id values'] }}"
+  vars:
+    ids: "{{ item.value | map(attribute='id') | list }}"
+  loop: "{{ ansiblerole_sections | dict2items }}"
+  when:
+  - item.value | length > 0
+  - (ids | length) != (ids | unique | length)
+
+- name: Mark spec validation status
+  set_fact:
+    ansiblerole_spec_valid: "{{ (ansiblerole_validation_errors | length) == 0 }}"
+
+- name: Build normalized semantic model
+  set_fact:
+    ansiblerole_semantic:
+      name: "{{ ansible_operator_meta.name }}"
+      pre_tasks: "{{ ansiblerole_sections.preTasks }}"
+      tasks: "{{ ansiblerole_sections.tasks }}"
+      post_tasks: "{{ ansiblerole_sections.postTasks }}"
+      handlers: "{{ ansiblerole_sections.handlers }}"
+  when: ansiblerole_spec_valid
+
+- name: Build distinct AnsibleTask references
+  set_fact:
+    ansiblerole_referenced_tasks: >-
+      {{
+        (
+          ansiblerole_sections.preTasks
+          + ansiblerole_sections.tasks
+          + ansiblerole_sections.postTasks
+          + ansiblerole_sections.handlers
+        )
+        | map(attribute='task')
+        | list
+        | unique
+      }}
+  when: ansiblerole_spec_valid
+
+- name: Resolve referenced AnsibleTasks
+  kubernetes.core.k8s_info:
+    api_version: tasks.krun.io/v1alpha1
+    kind: AnsibleTask
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    name: "{{ item }}"
+  loop: "{{ ansiblerole_referenced_tasks | default([]) }}"
+  register: ansiblerole_task_lookups
+  when: ansiblerole_spec_valid
+
+- name: Collect missing AnsibleTask references
+  set_fact:
+    ansiblerole_missing_task_refs: "{{ ansiblerole_task_lookups.results | selectattr('resources', 'equalto', []) | map(attribute='item') | list }}"
+  when: ansiblerole_spec_valid
+
+- name: Compose status outcome for invalid spec
+  set_fact:
+    ansiblerole_ready_status: "False"
+    ansiblerole_ready_reason: "SpecInvalid"
+    ansiblerole_ready_message: "{{ ansiblerole_validation_errors | join('; ') }}"
+  when: not ansiblerole_spec_valid
+
+- name: Compose status outcome for missing references
+  set_fact:
+    ansiblerole_ready_status: "False"
+    ansiblerole_ready_reason: "TaskReferenceNotFound"
+    ansiblerole_ready_message: "Missing AnsibleTask references: {{ ansiblerole_missing_task_refs | join(', ') }}"
+  when:
+  - ansiblerole_spec_valid
+  - (ansiblerole_missing_task_refs | default([]) | length) > 0
+
+- name: Compose status outcome for accepted semantics
+  set_fact:
+    ansiblerole_ready_status: "True"
+    ansiblerole_ready_reason: "SpecAccepted"
+    ansiblerole_ready_message: "Role semantics accepted with {{ ansiblerole_referenced_tasks | length }} referenced task(s)"
+  when:
+  - ansiblerole_spec_valid
+  - (ansiblerole_missing_task_refs | default([]) | length) == 0
+
+- name: Publish semantic status
+  operator_sdk.util.k8s_status:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    status:
+      observedGeneration: "{{ ansible_operator_meta.generation | int }}"
+      message: "{{ ansiblerole_ready_message }}"
+      conditions:
+      - type: Ready
+        status: "{{ ansiblerole_ready_status }}"
+        reason: "{{ ansiblerole_ready_reason }}"
+        message: "{{ ansiblerole_ready_message }}"
+        lastTransitionTime: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        observedGeneration: "{{ ansible_operator_meta.generation | int }}"

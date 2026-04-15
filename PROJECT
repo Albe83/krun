@@ -17,4 +17,11 @@ resources:
   group: tasks
   kind: AnsibleTask
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: krun.io
+  group: roles
+  kind: AnsibleRole
+  version: v1alpha1
 version: "3"

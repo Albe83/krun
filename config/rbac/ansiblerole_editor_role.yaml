@@ -1,0 +1,33 @@
+# This rule is not used by the project krun itself.
+# It is provided to allow the cluster admin to help manage permissions for users.
+#
+# Grants permissions to create, update, and delete resources within the roles.krun.io.
+# This role is intended for users who need to fully manage ansibleroles resources,
+# including managing their lifecycle, but without administrative access to all cluster resources.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: krun
+    app.kubernetes.io/managed-by: kustomize
+  name: ansiblerole-editor-role
+rules:
+- apiGroups:
+  - roles.krun.io
+  resources:
+  - ansibleroles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - roles.krun.io
+  resources:
+  - ansibleroles/status
+  verbs:
+  - get

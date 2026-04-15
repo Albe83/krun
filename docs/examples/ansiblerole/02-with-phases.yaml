@@ -1,0 +1,19 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  name: ansiblerole-example-02-with-phases
+spec:
+  preTasks:
+  - id: pre-check
+    task: ansibletask-sample
+  tasks:
+  - id: main-a
+    task: ansibletask-sample
+  - id: main-b
+    task: ansibletask-sample
+  postTasks:
+  - id: post-cleanup
+    task: ansibletask-sample
+  handlers:
+  - id: restart-handler
+    task: ansibletask-sample

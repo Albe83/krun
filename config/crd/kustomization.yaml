@@ -3,4 +3,5 @@
 # It should be run by config/default
 resources:
 - bases/tasks.krun.io_ansibletasks.yaml
+- bases/roles.krun.io_ansibleroles.yaml
 # +kubebuilder:scaffold:crdkustomizeresource

@@ -1,0 +1,133 @@
+---
+- name: Create referenced AnsibleTask resources for role tests
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    definition:
+      apiVersion: tasks.krun.io/v1alpha1
+      kind: AnsibleTask
+      metadata:
+        name: '{{ item }}'
+      spec:
+        action: ansible.builtin.debug
+        args:
+          msg: 'Task {{ item }} for role tests'
+  loop:
+  - ansibletask-role-a
+  - ansibletask-role-b
+
+- name: Create valid AnsibleRole and wait Ready=True
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "True"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-valid
+      spec:
+        preTasks:
+        - id: pre-a
+          task: ansibletask-role-a
+        tasks:
+        - id: main-a
+          task: ansibletask-role-a
+        - id: main-b
+          task: ansibletask-role-b
+        postTasks:
+        - id: post-a
+          task: ansibletask-role-b
+        handlers:
+        - id: handler-a
+          task: ansibletask-role-a
+
+- name: Fetch valid AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-valid
+  register: ansiblerole_valid_info
+
+- name: Validate valid role acceptance
+  assert:
+    that:
+    - ansiblerole_valid_info.resources | length == 1
+    - ansiblerole_valid_info.resources[0].status.conditions is defined
+    - ansiblerole_valid_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == 1
+    - ansiblerole_valid_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1
+
+- name: Create missing-reference AnsibleRole and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-missing-ref
+      spec:
+        tasks:
+        - id: main-missing
+          task: ansibletask-missing
+
+- name: Fetch missing-reference AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-missing-ref
+  register: ansiblerole_missing_info
+
+- name: Validate missing-reference role status
+  assert:
+    that:
+    - ansiblerole_missing_info.resources | length == 1
+    - ansiblerole_missing_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansiblerole_missing_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'TaskReferenceNotFound') | list | length == 1
+
+- name: Create duplicate-id AnsibleRole and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-duplicate-id
+      spec:
+        tasks:
+        - id: same-id
+          task: ansibletask-role-a
+        - id: same-id
+          task: ansibletask-role-b
+
+- name: Fetch duplicate-id AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-duplicate-id
+  register: ansiblerole_duplicate_info
+
+- name: Validate duplicate-id role status
+  assert:
+    that:
+    - ansiblerole_duplicate_info.resources | length == 1
+    - ansiblerole_duplicate_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansiblerole_duplicate_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecInvalid') | list | length == 1

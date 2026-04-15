@@ -1,0 +1,34 @@
+# This rule is not used by the project krun itself.
+# It is provided to allow the cluster admin to help manage permissions for users.
+#
+# Grants full permissions ('*') over roles.krun.io.
+# This role is intended for administrative users and service accounts that need
+# complete control over ansibleroles resources in the cluster.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: krun
+    app.kubernetes.io/managed-by: kustomize
+  name: ansiblerole-admin-role
+rules:
+- apiGroups:
+  - roles.krun.io
+  resources:
+  - ansibleroles
+  verbs:
+  - '*'
+- apiGroups:
+  - roles.krun.io
+  resources:
+  - ansibleroles/status
+  verbs:
+  - get
+- apiGroups:
+  - roles.krun.io
+  resources:
+  - ansibleroles/status
+  verbs:
+  - patch
+  - update

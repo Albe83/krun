@@ -25,4 +25,6 @@ resources:
 - ansibletask_admin_role.yaml
 - ansibletask_editor_role.yaml
 - ansibletask_viewer_role.yaml
-
+- ansiblerole_admin_role.yaml
+- ansiblerole_editor_role.yaml
+- ansiblerole_viewer_role.yaml

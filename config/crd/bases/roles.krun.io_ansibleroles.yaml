@@ -1,0 +1,150 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ansibleroles.roles.krun.io
+spec:
+  group: roles.krun.io
+  names:
+    kind: AnsibleRole
+    listKind: AnsibleRoleList
+    plural: ansibleroles
+    singular: ansiblerole
+    shortNames:
+    - arole
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AnsibleRole is the Schema for reusable Ansible role composition.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec defines role phases as references to AnsibleTask resources.
+            type: object
+            properties:
+              preTasks:
+                description: Ordered list of tasks executed before main tasks.
+                type: array
+                items:
+                  type: object
+                  required:
+                  - id
+                  - task
+                  properties:
+                    id:
+                      description: Unique step identifier within this section.
+                      type: string
+                      minLength: 1
+                    task:
+                      description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+              tasks:
+                description: Ordered list of main role tasks.
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  required:
+                  - id
+                  - task
+                  properties:
+                    id:
+                      description: Unique step identifier within this section.
+                      type: string
+                      minLength: 1
+                    task:
+                      description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+              postTasks:
+                description: Ordered list of tasks executed after main tasks.
+                type: array
+                items:
+                  type: object
+                  required:
+                  - id
+                  - task
+                  properties:
+                    id:
+                      description: Unique step identifier within this section.
+                      type: string
+                      minLength: 1
+                    task:
+                      description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+              handlers:
+                description: Ordered list of handler task references.
+                type: array
+                items:
+                  type: object
+                  required:
+                  - id
+                  - task
+                  properties:
+                    id:
+                      description: Unique step identifier within this section.
+                      type: string
+                      minLength: 1
+                    task:
+                      description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+            required:
+            - tasks
+          status:
+            description: Status contains observed information about the role resource.
+            type: object
+            properties:
+              observedGeneration:
+                description: Most recent spec generation observed by the operator.
+                type: integer
+                format: int64
+                minimum: 0
+              message:
+                description: Last reconciliation message.
+                type: string
+              conditions:
+                description: Standard status conditions for this resource.
+                type: array
+                items:
+                  type: object
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  properties:
+                    type:
+                      type: string
+                      minLength: 1
+                    status:
+                      type: string
+                      pattern: ^(True|False|Unknown)$
+                    reason:
+                      type: string
+                    message:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+                    observedGeneration:
+                      type: integer
+                      format: int64
+                      minimum: 0
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
