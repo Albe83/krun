@@ -2,11 +2,11 @@
 
 ## Purpose and scope
 
-`AnsibleRole` (`roles.krun.io/v1alpha1`) defines a reusable role composition as ordered references to `AnsibleTask` resources.
+`AnsibleRole` (`roles.krun.io/v1alpha1`) defines a reusable role composition as ordered references to `AnsibleTask` and `AnsibleBlock` resources.
 
 This CRD is semantic-only in v1:
 - it models role phases (`preTasks`, `tasks`, `postTasks`, `handlers`),
-- it validates structure and same-namespace task references,
+- it validates structure and same-namespace references,
 - it does not execute hosts or inventories.
 
 ## API identity
@@ -29,25 +29,31 @@ This CRD is semantic-only in v1:
 - `spec.postTasks`
 - `spec.handlers`
 
-Each list item uses `{id, task}`:
+Each list item uses union `{id, task}` or `{id, block}`:
 - `id`: unique identifier within that list.
 - `task`: referenced `AnsibleTask.metadata.name` in the same namespace.
+- `block`: referenced `AnsibleBlock.metadata.name` in the same namespace.
+
+Exactly one of `task` or `block` must be set for each item.
 
 ## `spec` field reference
 
 | Field | Type | Required | Purpose |
 | --- | --- | --- | --- |
-| `spec.preTasks` | `array[RoleTaskRef]` | No | Ordered tasks executed before main tasks. |
-| `spec.tasks` | `array[RoleTaskRef]` | Yes | Ordered main role tasks (`minItems: 1`). |
-| `spec.postTasks` | `array[RoleTaskRef]` | No | Ordered tasks executed after main tasks. |
-| `spec.handlers` | `array[RoleTaskRef]` | No | Ordered handler task references. |
+| `spec.preTasks` | `array[RoleEntryRef]` | No | Ordered entries executed before main phase. |
+| `spec.tasks` | `array[RoleEntryRef]` | Yes | Ordered main role entries (`minItems: 1`). |
+| `spec.postTasks` | `array[RoleEntryRef]` | No | Ordered entries executed after main phase. |
+| `spec.handlers` | `array[RoleEntryRef]` | No | Ordered handler entries. |
 
-`RoleTaskRef` schema:
+`RoleEntryRef` schema:
 
 | Field | Type | Required | Purpose |
 | --- | --- | --- | --- |
 | `id` | `string` | Yes | Step identifier (unique per list). |
-| `task` | `string` | Yes | Referenced `AnsibleTask` name in same namespace. |
+| `task` | `string` | Conditionally | Referenced `AnsibleTask` name in same namespace. |
+| `block` | `string` | Conditionally | Referenced `AnsibleBlock` name in same namespace. |
+
+Condition: exactly one of `task` or `block` is required.
 
 ## `status` field reference
 
@@ -61,8 +67,11 @@ Common `Ready` reasons:
 - `SpecAccepted`
 - `SpecInvalid`
 - `TaskReferenceNotFound`
+- `BlockReferenceNotFound`
+- `BlockReferenceNotReady`
 
 ## Examples
 
 - Base sample: [`config/samples/roles_v1alpha1_ansiblerole.yaml`](../../config/samples/roles_v1alpha1_ansiblerole.yaml)
 - Progressive examples: [`docs/examples/ansiblerole`](../examples/ansiblerole/README.md)
+- Cross-resource composition examples: [`docs/examples/composition`](../examples/composition/README.md)

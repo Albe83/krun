@@ -1,0 +1,17 @@
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-config-check
+spec:
+  action: ansible.builtin.debug
+  args:
+    msg: "validate config"
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-service-restart
+spec:
+  action: ansible.builtin.debug
+  args:
+    msg: "restart service"

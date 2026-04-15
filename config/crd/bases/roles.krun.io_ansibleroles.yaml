@@ -28,17 +28,16 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec defines role phases as references to AnsibleTask resources.
+            description: Spec defines role phases as references to AnsibleTask and AnsibleBlock resources.
             type: object
             properties:
               preTasks:
-                description: Ordered list of tasks executed before main tasks.
+                description: Ordered list of entries executed before main tasks.
                 type: array
                 items:
                   type: object
                   required:
                   - id
-                  - task
                   properties:
                     id:
                       description: Unique step identifier within this section.
@@ -48,15 +47,18 @@ spec:
                       description: Referenced AnsibleTask metadata.name in the same namespace.
                       type: string
                       minLength: 1
+                    block:
+                      description: Referenced AnsibleBlock metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
               tasks:
-                description: Ordered list of main role tasks.
+                description: Ordered list of main role entries.
                 type: array
                 minItems: 1
                 items:
                   type: object
                   required:
                   - id
-                  - task
                   properties:
                     id:
                       description: Unique step identifier within this section.
@@ -64,16 +66,19 @@ spec:
                       minLength: 1
                     task:
                       description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+                    block:
+                      description: Referenced AnsibleBlock metadata.name in the same namespace.
                       type: string
                       minLength: 1
               postTasks:
-                description: Ordered list of tasks executed after main tasks.
+                description: Ordered list of entries executed after main tasks.
                 type: array
                 items:
                   type: object
                   required:
                   - id
-                  - task
                   properties:
                     id:
                       description: Unique step identifier within this section.
@@ -81,16 +86,19 @@ spec:
                       minLength: 1
                     task:
                       description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+                    block:
+                      description: Referenced AnsibleBlock metadata.name in the same namespace.
                       type: string
                       minLength: 1
               handlers:
-                description: Ordered list of handler task references.
+                description: Ordered list of handler entries.
                 type: array
                 items:
                   type: object
                   required:
                   - id
-                  - task
                   properties:
                     id:
                       description: Unique step identifier within this section.
@@ -98,6 +106,10 @@ spec:
                       minLength: 1
                     task:
                       description: Referenced AnsibleTask metadata.name in the same namespace.
+                      type: string
+                      minLength: 1
+                    block:
+                      description: Referenced AnsibleBlock metadata.name in the same namespace.
                       type: string
                       minLength: 1
             required:

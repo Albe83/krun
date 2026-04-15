@@ -49,84 +49,94 @@ jobs:
             'config/samples/blocks_v1alpha1_ansibleblock.yaml',
             *sorted(glob.glob('docs/examples/ansibleblock/*.yaml')),
         ]
-        paths = task_paths + role_paths + block_paths
+        composition_paths = sorted(glob.glob('docs/examples/composition/*.yaml'))
+        paths = task_paths + role_paths + block_paths + composition_paths
 
         if not paths:
             raise SystemExit('No YAML files found for validation')
 
         for path in paths:
             with open(path, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
+                docs = list(yaml.safe_load_all(f))
 
-            if not isinstance(data, dict):
-                raise SystemExit(f'{path}: top-level YAML must be an object')
+            if not docs:
+                raise SystemExit(f'{path}: YAML document is empty')
 
-            kind = data.get('kind')
-            if kind not in {'AnsibleTask', 'AnsibleRole', 'AnsibleBlock'}:
-                raise SystemExit(f"{path}: kind must be 'AnsibleTask', 'AnsibleRole' or 'AnsibleBlock'")
+            for doc_idx, data in enumerate(docs):
+                if data is None:
+                    continue
+                if not isinstance(data, dict):
+                    raise SystemExit(f'{path}#{doc_idx}: top-level YAML must be an object')
 
-            spec = data.get('spec')
-            if not isinstance(spec, dict):
-                raise SystemExit(f'{path}: spec must be an object')
+                kind = data.get('kind')
+                if kind not in {'AnsibleTask', 'AnsibleRole', 'AnsibleBlock'}:
+                    raise SystemExit(f"{path}#{doc_idx}: kind must be 'AnsibleTask', 'AnsibleRole' or 'AnsibleBlock'")
 
-            if kind == 'AnsibleTask':
-                action = spec.get('action')
-                if not isinstance(action, str) or not action.strip():
-                    raise SystemExit(f'{path}: spec.action is required and must be non-empty')
-                if 'name' in spec:
-                    raise SystemExit(f'{path}: spec.name is not allowed, use metadata.name')
+                spec = data.get('spec')
+                if not isinstance(spec, dict):
+                    raise SystemExit(f'{path}#{doc_idx}: spec must be an object')
 
-            if kind == 'AnsibleRole':
-                tasks = spec.get('tasks')
-                if not isinstance(tasks, list) or not tasks:
-                    raise SystemExit(f'{path}: spec.tasks is required and must be a non-empty array')
+                if kind == 'AnsibleTask':
+                    action = spec.get('action')
+                    if not isinstance(action, str) or not action.strip():
+                        raise SystemExit(f'{path}#{doc_idx}: spec.action is required and must be non-empty')
+                    if 'name' in spec:
+                        raise SystemExit(f'{path}#{doc_idx}: spec.name is not allowed, use metadata.name')
 
-                for section in ('preTasks', 'tasks', 'postTasks', 'handlers'):
-                    refs = spec.get(section, [])
-                    if refs is None:
-                        refs = []
-                    if not isinstance(refs, list):
-                        raise SystemExit(f'{path}: spec.{section} must be an array')
+                if kind == 'AnsibleRole':
+                    tasks = spec.get('tasks')
+                    if not isinstance(tasks, list) or not tasks:
+                        raise SystemExit(f'{path}#{doc_idx}: spec.tasks is required and must be a non-empty array')
 
-                    seen_ids = set()
-                    for idx, ref in enumerate(refs):
-                        if not isinstance(ref, dict):
-                            raise SystemExit(f'{path}: spec.{section}[{idx}] must be an object')
-                        ref_id = ref.get('id')
-                        ref_task = ref.get('task')
-                        if not isinstance(ref_id, str) or not ref_id.strip():
-                            raise SystemExit(f'{path}: spec.{section}[{idx}].id is required and must be non-empty')
-                        if not isinstance(ref_task, str) or not ref_task.strip():
-                            raise SystemExit(f'{path}: spec.{section}[{idx}].task is required and must be non-empty')
-                        if ref_id in seen_ids:
-                            raise SystemExit(f'{path}: spec.{section} contains duplicated id value {ref_id!r}')
-                        seen_ids.add(ref_id)
+                    for section in ('preTasks', 'tasks', 'postTasks', 'handlers'):
+                        refs = spec.get(section, [])
+                        if refs is None:
+                            refs = []
+                        if not isinstance(refs, list):
+                            raise SystemExit(f'{path}#{doc_idx}: spec.{section} must be an array')
 
-            if kind == 'AnsibleBlock':
-                block = spec.get('block')
-                if not isinstance(block, list) or not block:
-                    raise SystemExit(f'{path}: spec.block is required and must be a non-empty array')
+                        seen_ids = set()
+                        for idx, ref in enumerate(refs):
+                            if not isinstance(ref, dict):
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section}[{idx}] must be an object')
+                            ref_id = ref.get('id')
+                            ref_task = ref.get('task')
+                            ref_block = ref.get('block')
+                            if not isinstance(ref_id, str) or not ref_id.strip():
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section}[{idx}].id is required and must be non-empty')
+                            has_task = isinstance(ref_task, str) and bool(ref_task.strip())
+                            has_block = isinstance(ref_block, str) and bool(ref_block.strip())
+                            if has_task == has_block:
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section}[{idx}] must define exactly one of task or block')
+                            if ref_id in seen_ids:
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section} contains duplicated id value {ref_id!r}')
+                            seen_ids.add(ref_id)
 
-                for section in ('block', 'rescue', 'always'):
-                    refs = spec.get(section, [])
-                    if refs is None:
-                        refs = []
-                    if not isinstance(refs, list):
-                        raise SystemExit(f'{path}: spec.{section} must be an array')
+                if kind == 'AnsibleBlock':
+                    block = spec.get('block')
+                    if not isinstance(block, list) or not block:
+                        raise SystemExit(f'{path}#{doc_idx}: spec.block is required and must be a non-empty array')
 
-                    seen_ids = set()
-                    for idx, ref in enumerate(refs):
-                        if not isinstance(ref, dict):
-                            raise SystemExit(f'{path}: spec.{section}[{idx}] must be an object')
-                        ref_id = ref.get('id')
-                        ref_task = ref.get('task')
-                        if not isinstance(ref_id, str) or not ref_id.strip():
-                            raise SystemExit(f'{path}: spec.{section}[{idx}].id is required and must be non-empty')
-                        if not isinstance(ref_task, str) or not ref_task.strip():
-                            raise SystemExit(f'{path}: spec.{section}[{idx}].task is required and must be non-empty')
-                        if ref_id in seen_ids:
-                            raise SystemExit(f'{path}: spec.{section} contains duplicated id value {ref_id!r}')
-                        seen_ids.add(ref_id)
+                    for section in ('block', 'rescue', 'always'):
+                        refs = spec.get(section, [])
+                        if refs is None:
+                            refs = []
+                        if not isinstance(refs, list):
+                            raise SystemExit(f'{path}#{doc_idx}: spec.{section} must be an array')
+
+                        seen_ids = set()
+                        for idx, ref in enumerate(refs):
+                            if not isinstance(ref, dict):
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section}[{idx}] must be an object')
+                            ref_id = ref.get('id')
+                            ref_task = ref.get('task')
+                            if not isinstance(ref_id, str) or not ref_id.strip():
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section}[{idx}].id is required and must be non-empty')
+                            if not isinstance(ref_task, str) or not ref_task.strip():
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section}[{idx}].task is required and must be non-empty')
+                            if ref_id in seen_ids:
+                                raise SystemExit(f'{path}#{doc_idx}: spec.{section} contains duplicated id value {ref_id!r}')
+                            seen_ids.add(ref_id)
 
         print(f'Validated {len(paths)} files')
         PY

@@ -1,6 +1,6 @@
 ---
 # This role models role semantics only.
-# It validates AnsibleTask references and publishes acceptance status.
+# It validates AnsibleTask and AnsibleBlock references and publishes acceptance status.
 
 - name: Build role sections with defaults
   set_fact:
@@ -19,16 +19,18 @@
     ansiblerole_validation_errors: "{{ ansiblerole_validation_errors + ['spec.tasks is required and must contain at least one item'] }}"
   when: ansiblerole_sections.tasks | length == 0
 
-- name: Validate section item shape
+- name: Validate section item shape and task/block union
   set_fact:
-    ansiblerole_validation_errors: "{{ ansiblerole_validation_errors + [item.0.key ~ '[' ~ entry_index ~ '] must be an object with non-empty id and task'] }}"
+    ansiblerole_validation_errors: "{{ ansiblerole_validation_errors + [item.0.key ~ '[' ~ entry_index ~ '] must be an object with non-empty id and exactly one of task or block'] }}"
   vars:
     entry_index: "{{ ansiblerole_shape_index | string }}"
+    has_task: "{{ item.1.task is defined and (item.1.task | string | length) > 0 }}"
+    has_block: "{{ item.1.block is defined and (item.1.block | string | length) > 0 }}"
   loop: "{{ query('subelements', ansiblerole_sections | dict2items, 'value') }}"
   loop_control:
     index_var: ansiblerole_shape_index
   when:
-  - item.1 is not mapping or item.1.id is not defined or item.1.task is not defined or (item.1.id | string | length) == 0 or (item.1.task | string | length) == 0
+  - item.1 is not mapping or item.1.id is not defined or (item.1.id | string | length) == 0 or (has_task and has_block) or ((not has_task) and (not has_block))
 
 - name: Validate unique ids per section
   set_fact:
@@ -64,7 +66,25 @@
           + ansiblerole_sections.postTasks
           + ansiblerole_sections.handlers
         )
+        | selectattr('task', 'defined')
         | map(attribute='task')
+        | list
+        | unique
+      }}
+  when: ansiblerole_spec_valid
+
+- name: Build distinct AnsibleBlock references
+  set_fact:
+    ansiblerole_referenced_blocks: >-
+      {{
+        (
+          ansiblerole_sections.preTasks
+          + ansiblerole_sections.tasks
+          + ansiblerole_sections.postTasks
+          + ansiblerole_sections.handlers
+        )
+        | selectattr('block', 'defined')
+        | map(attribute='block')
         | list
         | unique
       }}
@@ -80,9 +100,43 @@
   register: ansiblerole_task_lookups
   when: ansiblerole_spec_valid
 
+- name: Resolve referenced AnsibleBlocks
+  kubernetes.core.k8s_info:
+    api_version: blocks.krun.io/v1alpha1
+    kind: AnsibleBlock
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    name: "{{ item }}"
+  loop: "{{ ansiblerole_referenced_blocks | default([]) }}"
+  register: ansiblerole_block_lookups
+  when: ansiblerole_spec_valid
+
 - name: Collect missing AnsibleTask references
   set_fact:
     ansiblerole_missing_task_refs: "{{ ansiblerole_task_lookups.results | selectattr('resources', 'equalto', []) | map(attribute='item') | list }}"
+  when: ansiblerole_spec_valid
+
+- name: Collect missing AnsibleBlock references
+  set_fact:
+    ansiblerole_missing_block_refs: "{{ ansiblerole_block_lookups.results | selectattr('resources', 'equalto', []) | map(attribute='item') | list }}"
+  when: ansiblerole_spec_valid
+
+- name: Initialize not-ready AnsibleBlock references
+  set_fact:
+    ansiblerole_not_ready_block_refs: []
+  when: ansiblerole_spec_valid
+
+- name: Collect not-ready AnsibleBlock references
+  set_fact:
+    ansiblerole_not_ready_block_refs: "{{ ansiblerole_not_ready_block_refs + [item.item] }}"
+  loop: "{{ ansiblerole_block_lookups.results | default([]) }}"
+  when:
+  - ansiblerole_spec_valid
+  - item.resources | length > 0
+  - item.resources[0].status is not defined or item.resources[0].status.conditions is not defined or (item.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length) == 0
+
+- name: Normalize not-ready AnsibleBlock list
+  set_fact:
+    ansiblerole_not_ready_block_refs: "{{ ansiblerole_not_ready_block_refs | unique }}"
   when: ansiblerole_spec_valid
 
 - name: Compose status outcome for invalid spec
@@ -92,7 +146,7 @@
     ansiblerole_ready_message: "{{ ansiblerole_validation_errors | join('; ') }}"
   when: not ansiblerole_spec_valid
 
-- name: Compose status outcome for missing references
+- name: Compose status outcome for missing task references
   set_fact:
     ansiblerole_ready_status: "False"
     ansiblerole_ready_reason: "TaskReferenceNotFound"
@@ -101,14 +155,40 @@
   - ansiblerole_spec_valid
   - (ansiblerole_missing_task_refs | default([]) | length) > 0
 
+- name: Compose status outcome for missing block references
+  set_fact:
+    ansiblerole_ready_status: "False"
+    ansiblerole_ready_reason: "BlockReferenceNotFound"
+    ansiblerole_ready_message: "Missing AnsibleBlock references: {{ ansiblerole_missing_block_refs | join(', ') }}"
+  when:
+  - ansiblerole_spec_valid
+  - (ansiblerole_missing_task_refs | default([]) | length) == 0
+  - (ansiblerole_missing_block_refs | default([]) | length) > 0
+
+- name: Compose status outcome for not-ready block references
+  set_fact:
+    ansiblerole_ready_status: "False"
+    ansiblerole_ready_reason: "BlockReferenceNotReady"
+    ansiblerole_ready_message: "Referenced AnsibleBlocks are not Ready: {{ ansiblerole_not_ready_block_refs | join(', ') }}"
+  when:
+  - ansiblerole_spec_valid
+  - (ansiblerole_missing_task_refs | default([]) | length) == 0
+  - (ansiblerole_missing_block_refs | default([]) | length) == 0
+  - (ansiblerole_not_ready_block_refs | default([]) | length) > 0
+
 - name: Compose status outcome for accepted semantics
   set_fact:
     ansiblerole_ready_status: "True"
     ansiblerole_ready_reason: "SpecAccepted"
-    ansiblerole_ready_message: "Role semantics accepted with {{ ansiblerole_referenced_tasks | length }} referenced task(s)"
+    ansiblerole_ready_message: >-
+      Role semantics accepted with
+      {{ ansiblerole_referenced_tasks | length }} task reference(s)
+      and {{ ansiblerole_referenced_blocks | length }} block reference(s)
   when:
   - ansiblerole_spec_valid
   - (ansiblerole_missing_task_refs | default([]) | length) == 0
+  - (ansiblerole_missing_block_refs | default([]) | length) == 0
+  - (ansiblerole_not_ready_block_refs | default([]) | length) == 0
 
 - name: Publish semantic status
   operator_sdk.util.k8s_status:

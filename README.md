@@ -18,8 +18,8 @@ Current CRDs:
   - required: `spec.action`
   - optional: `spec.args`, `when`, `tags`, `become`, `register`, `ignoreErrors`
   - additional controls: `changedWhen`, `failedWhen`, `loop`, `loopControl`, `until`, `retries`, `delay`, `checkMode`, `notify`
-- `AnsibleRole` (`roles.krun.io/v1alpha1`): semantic composition of `AnsibleTask` references across role phases.
-  - required: `spec.tasks` (`{id, task}` items)
+- `AnsibleRole` (`roles.krun.io/v1alpha1`): semantic composition of task/block references across role phases.
+  - required: `spec.tasks` (`{id, task}` or `{id, block}` items)
   - optional: `spec.preTasks`, `spec.postTasks`, `spec.handlers`
 - `AnsibleBlock` (`blocks.krun.io/v1alpha1`): semantic composition of `AnsibleTask` references across block phases.
   - required: `spec.block` (`{id, task}` items)
@@ -64,14 +64,15 @@ The CI publishes an executable operator image to GHCR:
 Progressive `AnsibleTask` examples are available in [`docs/examples/ansibletask`](./docs/examples/ansibletask/README.md).
 Progressive `AnsibleRole` examples are available in [`docs/examples/ansiblerole`](./docs/examples/ansiblerole/README.md).
 Progressive `AnsibleBlock` examples are available in [`docs/examples/ansibleblock`](./docs/examples/ansibleblock/README.md).
+End-to-end composition examples (`task -> block -> role`) are available in [`docs/examples/composition`](./docs/examples/composition/README.md).
 
 ## Quickstart
 
 ```bash
 make install
 kubectl apply -f config/samples/tasks_v1alpha1_ansibletask.yaml
-kubectl apply -f config/samples/roles_v1alpha1_ansiblerole.yaml
 kubectl apply -f config/samples/blocks_v1alpha1_ansibleblock.yaml
+kubectl apply -f config/samples/roles_v1alpha1_ansiblerole.yaml
 ```
 
 Run the operator locally:
@@ -85,4 +86,5 @@ Inspect resource schema:
 ```bash
 kubectl explain ansibletasks.spec
 kubectl explain ansibleblocks.spec
+kubectl explain ansibleroles.spec
 ```

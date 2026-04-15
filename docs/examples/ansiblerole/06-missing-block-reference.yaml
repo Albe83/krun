@@ -1,0 +1,8 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  name: ansiblerole-example-06-missing-block-reference
+spec:
+  tasks:
+  - id: main-missing-block
+    block: ansibleblock-does-not-exist

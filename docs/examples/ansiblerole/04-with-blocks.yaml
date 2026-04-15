@@ -1,0 +1,16 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  name: ansiblerole-example-04-with-blocks
+spec:
+  preTasks:
+  - id: pre-block
+    block: ansibleblock-sample
+  tasks:
+  - id: main-block-a
+    block: ansibleblock-sample
+  - id: main-block-b
+    block: ansibleblock-sample
+  postTasks:
+  - id: post-block
+    block: ansibleblock-sample

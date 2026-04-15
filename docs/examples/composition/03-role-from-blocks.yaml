@@ -1,0 +1,11 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  name: role-from-blocks
+spec:
+  preTasks:
+  - id: preflight
+    block: block-preflight
+  tasks:
+  - id: main-recovery
+    block: block-recovery

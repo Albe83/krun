@@ -16,7 +16,28 @@
   - ansibletask-role-a
   - ansibletask-role-b
 
-- name: Create valid AnsibleRole and wait Ready=True
+- name: Create referenced AnsibleBlock resources for role tests
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    definition:
+      apiVersion: blocks.krun.io/v1alpha1
+      kind: AnsibleBlock
+      metadata:
+        name: '{{ item.name }}'
+      spec:
+        block:
+        - id: '{{ item.id }}'
+          task: '{{ item.task }}'
+  loop:
+  - name: ansibleblock-role-a
+    id: block-a
+    task: ansibletask-role-a
+  - name: ansibleblock-role-b
+    id: block-b
+    task: ansibletask-role-b
+
+- name: Create valid AnsibleRole (task-only) and wait Ready=True
   k8s:
     state: present
     namespace: '{{ namespace }}'
@@ -29,7 +50,7 @@
       apiVersion: roles.krun.io/v1alpha1
       kind: AnsibleRole
       metadata:
-        name: ansiblerole-test-valid
+        name: ansiblerole-test-valid-task-only
       spec:
         preTasks:
         - id: pre-a
@@ -39,30 +60,95 @@
           task: ansibletask-role-a
         - id: main-b
           task: ansibletask-role-b
-        postTasks:
-        - id: post-a
-          task: ansibletask-role-b
-        handlers:
-        - id: handler-a
-          task: ansibletask-role-a
 
-- name: Fetch valid AnsibleRole status
+- name: Fetch task-only AnsibleRole status
   k8s_info:
     api_version: roles.krun.io/v1alpha1
     kind: AnsibleRole
     namespace: '{{ namespace }}'
-    name: ansiblerole-test-valid
-  register: ansiblerole_valid_info
+    name: ansiblerole-test-valid-task-only
+  register: ansiblerole_task_only_info
 
-- name: Validate valid role acceptance
+- name: Validate task-only role acceptance
   assert:
     that:
-    - ansiblerole_valid_info.resources | length == 1
-    - ansiblerole_valid_info.resources[0].status.conditions is defined
-    - ansiblerole_valid_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == 1
-    - ansiblerole_valid_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1
+    - ansiblerole_task_only_info.resources | length == 1
+    - ansiblerole_task_only_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == 1
+    - ansiblerole_task_only_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1
 
-- name: Create missing-reference AnsibleRole and wait Ready=False
+- name: Create valid AnsibleRole (block-only) and wait Ready=True
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "True"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-valid-block-only
+      spec:
+        tasks:
+        - id: main-block-a
+          block: ansibleblock-role-a
+        - id: main-block-b
+          block: ansibleblock-role-b
+
+- name: Fetch block-only AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-valid-block-only
+  register: ansiblerole_block_only_info
+
+- name: Validate block-only role acceptance
+  assert:
+    that:
+    - ansiblerole_block_only_info.resources | length == 1
+    - ansiblerole_block_only_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == 1
+    - ansiblerole_block_only_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1
+
+- name: Create valid AnsibleRole (mixed task+block) and wait Ready=True
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "True"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-valid-mixed
+      spec:
+        tasks:
+        - id: main-task-a
+          task: ansibletask-role-a
+        - id: main-block-a
+          block: ansibleblock-role-a
+
+- name: Fetch mixed AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-valid-mixed
+  register: ansiblerole_mixed_info
+
+- name: Validate mixed role acceptance
+  assert:
+    that:
+    - ansiblerole_mixed_info.resources | length == 1
+    - ansiblerole_mixed_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == 1
+    - ansiblerole_mixed_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1
+
+- name: Create missing-task-reference AnsibleRole and wait Ready=False
   k8s:
     state: present
     namespace: '{{ namespace }}'
@@ -75,26 +161,143 @@
       apiVersion: roles.krun.io/v1alpha1
       kind: AnsibleRole
       metadata:
-        name: ansiblerole-test-missing-ref
+        name: ansiblerole-test-missing-task-ref
       spec:
         tasks:
-        - id: main-missing
+        - id: main-missing-task
           task: ansibletask-missing
 
-- name: Fetch missing-reference AnsibleRole status
+- name: Fetch missing-task-reference AnsibleRole status
   k8s_info:
     api_version: roles.krun.io/v1alpha1
     kind: AnsibleRole
     namespace: '{{ namespace }}'
-    name: ansiblerole-test-missing-ref
-  register: ansiblerole_missing_info
+    name: ansiblerole-test-missing-task-ref
+  register: ansiblerole_missing_task_info
 
-- name: Validate missing-reference role status
+- name: Validate missing-task-reference role status
   assert:
     that:
-    - ansiblerole_missing_info.resources | length == 1
-    - ansiblerole_missing_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
-    - ansiblerole_missing_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'TaskReferenceNotFound') | list | length == 1
+    - ansiblerole_missing_task_info.resources | length == 1
+    - ansiblerole_missing_task_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansiblerole_missing_task_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'TaskReferenceNotFound') | list | length == 1
+
+- name: Create missing-block-reference AnsibleRole and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-missing-block-ref
+      spec:
+        tasks:
+        - id: main-missing-block
+          block: ansibleblock-missing
+
+- name: Fetch missing-block-reference AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-missing-block-ref
+  register: ansiblerole_missing_block_info
+
+- name: Validate missing-block-reference role status
+  assert:
+    that:
+    - ansiblerole_missing_block_info.resources | length == 1
+    - ansiblerole_missing_block_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansiblerole_missing_block_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'BlockReferenceNotFound') | list | length == 1
+
+- name: Create not-ready block for role tests
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    definition:
+      apiVersion: blocks.krun.io/v1alpha1
+      kind: AnsibleBlock
+      metadata:
+        name: ansibleblock-role-not-ready
+      spec:
+        block:
+        - id: block-missing
+          task: ansibletask-not-existing
+
+- name: Create not-ready-block-reference AnsibleRole and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-not-ready-block-ref
+      spec:
+        tasks:
+        - id: main-not-ready-block
+          block: ansibleblock-role-not-ready
+
+- name: Fetch not-ready-block-reference AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-not-ready-block-ref
+  register: ansiblerole_not_ready_block_info
+
+- name: Validate not-ready-block-reference role status
+  assert:
+    that:
+    - ansiblerole_not_ready_block_info.resources | length == 1
+    - ansiblerole_not_ready_block_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansiblerole_not_ready_block_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'BlockReferenceNotReady') | list | length == 1
+
+- name: Create invalid union AnsibleRole and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: roles.krun.io/v1alpha1
+      kind: AnsibleRole
+      metadata:
+        name: ansiblerole-test-invalid-union
+      spec:
+        tasks:
+        - id: invalid-both
+          task: ansibletask-role-a
+          block: ansibleblock-role-a
+
+- name: Fetch invalid union AnsibleRole status
+  k8s_info:
+    api_version: roles.krun.io/v1alpha1
+    kind: AnsibleRole
+    namespace: '{{ namespace }}'
+    name: ansiblerole-test-invalid-union
+  register: ansiblerole_invalid_union_info
+
+- name: Validate invalid union role status
+  assert:
+    that:
+    - ansiblerole_invalid_union_info.resources | length == 1
+    - ansiblerole_invalid_union_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansiblerole_invalid_union_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecInvalid') | list | length == 1
 
 - name: Create duplicate-id AnsibleRole and wait Ready=False
   k8s:
@@ -115,7 +318,7 @@
         - id: same-id
           task: ansibletask-role-a
         - id: same-id
-          task: ansibletask-role-b
+          block: ansibleblock-role-b
 
 - name: Fetch duplicate-id AnsibleRole status
   k8s_info:

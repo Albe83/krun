@@ -1,0 +1,23 @@
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: block-preflight
+spec:
+  block:
+  - id: check-config
+    task: task-config-check
+---
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: block-recovery
+spec:
+  block:
+  - id: restart-service
+    task: task-service-restart
+  rescue:
+  - id: rescue-log
+    task: task-config-check
+  always:
+  - id: always-log
+    task: task-config-check

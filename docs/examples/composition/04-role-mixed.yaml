@@ -1,0 +1,10 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  name: role-mixed
+spec:
+  tasks:
+  - id: direct-task
+    task: task-config-check
+  - id: grouped-block
+    block: block-recovery

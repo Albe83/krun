@@ -18,3 +18,4 @@ This directory contains the Architecture Decision Records (ADRs) for `krun`.
 | [0004](./0004-camelcase-crd-and-advanced-task-controls.md) | Keep camelCase CRD API and map to Ansible keywords | Accepted | 2026-04-15 |
 | [0005](./0005-ansiblerole-semantic-composition.md) | Introduce `AnsibleRole` as semantic composition of task references | Accepted | 2026-04-15 |
 | [0006](./0006-ansibleblock-semantic-composition.md) | Introduce `AnsibleBlock` as semantic composition of task references | Accepted | 2026-04-15 |
+| [0007](./0007-ansiblerole-task-block-union.md) | Extend `AnsibleRole` entries to reference task or block | Accepted | 2026-04-15 |
