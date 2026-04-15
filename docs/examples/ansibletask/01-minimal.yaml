@@ -1,0 +1,8 @@
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: ansibletask-example-01-minimal
+spec:
+  action: ansible.builtin.debug
+  args:
+    msg: "Minimal AnsibleTask example"

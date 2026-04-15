@@ -1,0 +1,17 @@
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: ansibletask-example-03-loop-retry
+spec:
+  name: Loop and retry control
+  action: ansible.builtin.debug
+  args:
+    msg: "Processing item {{ item }}"
+  loop:
+  - "item-a"
+  - "item-b"
+  loopControl:
+    loopVar: item
+  until: "loop_result is succeeded"
+  retries: 3
+  delay: 5

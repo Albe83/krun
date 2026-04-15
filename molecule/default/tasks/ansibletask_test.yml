@@ -1,0 +1,29 @@
+---
+- name: Create the tasks.krun.io/v1alpha1.AnsibleTask
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    definition: "{{ lookup('template', '/'.join([samples_dir, cr_file])) | from_yaml }}"
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "True"
+  vars:
+    cr_file: 'tasks_v1alpha1_ansibletask.yaml'
+
+- name: Fetch AnsibleTask status
+  k8s_info:
+    api_version: tasks.krun.io/v1alpha1
+    kind: AnsibleTask
+    namespace: '{{ namespace }}'
+    name: ansibletask-sample
+  register: ansibletask_info
+
+- name: Validate semantic acceptance
+  assert:
+    that:
+    - ansibletask_info.resources | length == 1
+    - ansibletask_info.resources[0].status.conditions is defined
+    - ansibletask_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | list | length == 1
+    - ansibletask_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1

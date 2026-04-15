@@ -1,0 +1,16 @@
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: ansibletask-example-04-notify-checkmode
+spec:
+  name: Notify and check mode
+  action: ansible.builtin.debug
+  args:
+    msg: "Task with notify and check mode"
+  checkMode: false
+  notify:
+  - "restart demo service"
+  tags:
+  - demo
+  register: demo_result
+  ignoreErrors: false

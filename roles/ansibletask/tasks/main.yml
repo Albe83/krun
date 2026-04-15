@@ -1,0 +1,48 @@
+---
+# This role intentionally models task semantics only.
+# It does not execute remote hosts/inventory orchestration yet.
+
+- name: Validate required task fields
+  assert:
+    that:
+    - ansibletask_spec.action is defined
+    - (ansibletask_spec.action | string | length) > 0
+    fail_msg: "spec.action is required and must be non-empty"
+
+- name: Build normalized task semantic model
+  set_fact:
+    ansibletask_semantic:
+      name: "{{ ansibletask_spec.name | default(ansible_operator_meta.name) }}"
+      action: "{{ ansibletask_spec.action }}"
+      args: "{{ ansibletask_spec.args | default({}) }}"
+      when: "{{ ansibletask_spec.when | default(omit) }}"
+      tags: "{{ ansibletask_spec.tags | default([]) }}"
+      become: "{{ ansibletask_spec.become | default(false) }}"
+      register: "{{ ansibletask_spec.register | default(omit) }}"
+      changed_when: "{{ ansibletask_spec.changedWhen | default(omit) }}"
+      failed_when: "{{ ansibletask_spec.failedWhen | default(omit) }}"
+      loop: "{{ ansibletask_spec.loop | default(omit) }}"
+      loop_control: "{{ ansibletask_spec.loopControl | default(omit) }}"
+      until: "{{ ansibletask_spec.until | default(omit) }}"
+      retries: "{{ ansibletask_spec.retries | default(omit) }}"
+      delay: "{{ ansibletask_spec.delay | default(omit) }}"
+      check_mode: "{{ ansibletask_spec.checkMode | default(omit) }}"
+      notify: "{{ ansibletask_spec.notify | default(omit) }}"
+      ignore_errors: "{{ ansibletask_spec.ignoreErrors | default(false) }}"
+
+- name: Publish semantic status
+  operator_sdk.util.k8s_status:
+    api_version: tasks.krun.io/v1alpha1
+    kind: AnsibleTask
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    status:
+      observedGeneration: "{{ ansible_operator_meta.generation | int }}"
+      message: "Task semantics accepted for action {{ ansibletask_semantic.action }}"
+      conditions:
+      - type: Ready
+        status: "True"
+        reason: SpecAccepted
+        message: "AnsibleTask semantic definition is valid"
+        lastTransitionTime: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        observedGeneration: "{{ ansible_operator_meta.generation | int }}"

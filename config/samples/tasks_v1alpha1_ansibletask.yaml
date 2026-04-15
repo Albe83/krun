@@ -1,0 +1,31 @@
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  labels:
+    app.kubernetes.io/name: krun
+    app.kubernetes.io/managed-by: kustomize
+  name: ansibletask-sample
+spec:
+  name: Ensure demo message
+  action: ansible.builtin.debug
+  args:
+    msg: "Hello from AnsibleTask"
+  tags:
+  - demo
+  when: "true"
+  changedWhen: "false"
+  failedWhen: "false"
+  loop:
+  - "item-a"
+  - "item-b"
+  loopControl:
+    loopVar: item
+  until: "demo_result is succeeded"
+  retries: 3
+  delay: 5
+  checkMode: false
+  notify:
+  - "restart demo service"
+  become: false
+  register: demo_result
+  ignoreErrors: false
