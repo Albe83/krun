@@ -6,6 +6,10 @@
 
 Kubernetes operator (Ansible-based) built with `operator-sdk`.
 
+## Contributing
+
+Contribution rules for both humans and AI agents are documented in [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
 ## Current milestone
 
 The first CRD is `AnsibleTask` (`tasks.krun.io/v1alpha1`), a reusable semantic definition of a single Ansible task:

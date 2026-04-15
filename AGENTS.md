@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Contribution Policy Source of Truth
+For contribution governance (human developers + AI agents), follow [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+If this file and `CONTRIBUTING.md` diverge, `CONTRIBUTING.md` takes precedence.
+
 ## Project Structure & Module Organization
 This repository is currently a minimal scaffold:
 - `README.md`: top-level project description.
