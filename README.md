@@ -1,5 +1,9 @@
 # krun
 
+[![Build](https://img.shields.io/github/actions/workflow/status/Albe83/krun/build.yml?branch=main&style=flat-square)](https://github.com/Albe83/krun/actions/workflows/build.yml)
+[![GHCR](https://img.shields.io/badge/ghcr-ghcr.io%2FAlbe83%2Fkrun-blue?style=flat-square&logo=github)](https://github.com/users/Albe83/packages/container/package/krun)
+[![License](https://img.shields.io/github/license/Albe83/krun?style=flat-square)](./LICENSE)
+
 Kubernetes operator (Ansible-based) built with `operator-sdk`.
 
 ## Current milestone
