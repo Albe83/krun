@@ -72,10 +72,6 @@ spec:
                 description: Advanced control knobs for task loops.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
-              name:
-                description: Human-readable label for the task.
-                minLength: 1
-                type: string
               notify:
                 description: List of handlers to notify when the task reports changed.
                 items:

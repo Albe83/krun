@@ -6,7 +6,6 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: ansibletask-sample
 spec:
-  name: Ensure demo message
   action: ansible.builtin.debug
   args:
     msg: "Hello from AnsibleTask"

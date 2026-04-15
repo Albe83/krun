@@ -15,8 +15,9 @@ Supported `spec` fields
 
 - `action` (required): task action (typically a fully qualified Ansible module name).
 - `args` (optional): free-form action arguments object.
-- `name`, `when`, `tags`, `become`, `register`, `ignoreErrors` (optional).
+- `when`, `tags`, `become`, `register`, `ignoreErrors` (optional).
 - `changedWhen`, `failedWhen`, `loop`, `loopControl`, `until`, `retries`, `delay`, `checkMode`, `notify` (optional).
+- task semantic name is derived from `metadata.name`.
 
 Status fields written by the role
 ---------------------------------

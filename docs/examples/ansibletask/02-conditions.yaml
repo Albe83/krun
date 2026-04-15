@@ -3,7 +3,6 @@ kind: AnsibleTask
 metadata:
   name: ansibletask-example-02-conditions
 spec:
-  name: Validate conditional execution
   action: ansible.builtin.debug
   args:
     msg: "Conditional task example"

@@ -7,7 +7,7 @@ Kubernetes operator (Ansible-based) built with `operator-sdk`.
 The first CRD is `AnsibleTask` (`tasks.krun.io/v1alpha1`), a reusable semantic definition of a single Ansible task:
 
 - required: `spec.action`
-- optional: `spec.args`, `name`, `when`, `tags`, `become`, `register`, `ignoreErrors`
+- optional: `spec.args`, `when`, `tags`, `become`, `register`, `ignoreErrors`
 - additional task controls: `changedWhen`, `failedWhen`, `loop`, `loopControl`, `until`, `retries`, `delay`, `checkMode`, `notify`
 
 This milestone models task semantics only. It does not execute remote hosts or inventories yet.

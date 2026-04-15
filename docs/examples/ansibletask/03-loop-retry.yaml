@@ -3,7 +3,6 @@ kind: AnsibleTask
 metadata:
   name: ansibletask-example-03-loop-retry
 spec:
-  name: Loop and retry control
   action: ansible.builtin.debug
   args:
     msg: "Processing item {{ item }}"

@@ -26,7 +26,6 @@ This CRD is a semantic building block, not a runtime execution job:
 
 ### Optional
 - `spec.args`
-- `spec.name`
 - `spec.when`
 - `spec.tags`
 - `spec.become`
@@ -48,7 +47,6 @@ This CRD is a semantic building block, not a runtime execution job:
 | --- | --- | --- | --- | --- | --- |
 | `spec.action` | `string` | Yes | Task action to execute (usually module FQCN). | `action` / module invocation | [Playbook Keywords](https://docs.ansible.com/projects/ansible/latest/reference_appendices/playbooks_keywords.html), [Module Index](https://docs.ansible.com/projects/ansible/latest/collections/index_module.html) |
 | `spec.args` | `object` | No | Parameters for the selected action/module. | module/action arguments | [Module Index](https://docs.ansible.com/projects/ansible/latest/collections/index_module.html) |
-| `spec.name` | `string` | No | Human-readable task label. | `name` | [Playbook Keywords](https://docs.ansible.com/projects/ansible/latest/reference_appendices/playbooks_keywords.html) |
 | `spec.when` | `string` | No | Conditional expression for task execution. | `when` | [Conditionals](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_conditionals.html) |
 | `spec.tags` | `array[string]` | No | Tag list for selective execution. | `tags` | [Tags](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_tags.html) |
 | `spec.become` | `boolean` | No | Enable/disable privilege escalation. | `become` | [Privilege Escalation](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_privilege_escalation.html) |
@@ -89,3 +87,4 @@ This CRD is a semantic building block, not a runtime execution job:
 
 - API style is camelCase in CRD fields, with internal mapping to Ansible snake_case keywords where applicable.
 - Canonical action field is `spec.action` (`spec.module` is not part of the current API contract).
+- Task name is derived from `metadata.name`; `spec.name` is not part of the current API contract.

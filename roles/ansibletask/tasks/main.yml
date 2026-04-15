@@ -12,7 +12,7 @@
 - name: Build normalized task semantic model
   set_fact:
     ansibletask_semantic:
-      name: "{{ ansibletask_spec.name | default(ansible_operator_meta.name) }}"
+      name: "{{ ansible_operator_meta.name }}"
       action: "{{ ansibletask_spec.action }}"
       args: "{{ ansibletask_spec.args | default({}) }}"
       when: "{{ ansibletask_spec.when | default(omit) }}"

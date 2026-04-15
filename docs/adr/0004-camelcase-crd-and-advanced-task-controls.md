@@ -23,6 +23,8 @@ Added task controls in `spec`:
 - `checkMode` -> `check_mode`
 - `notify`
 
+Task naming does not come from `spec`: semantic task name is derived from `metadata.name`.
+
 ## Consequences
 
 - CRD remains stylistically consistent for API consumers.
