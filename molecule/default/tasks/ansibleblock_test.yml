@@ -1,0 +1,130 @@
+---
+- name: Create referenced AnsibleTask resources for block tests
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    definition:
+      apiVersion: tasks.krun.io/v1alpha1
+      kind: AnsibleTask
+      metadata:
+        name: '{{ item }}'
+      spec:
+        action: ansible.builtin.debug
+        args:
+          msg: 'Task {{ item }} for block tests'
+  loop:
+  - ansibletask-block-a
+  - ansibletask-block-b
+
+- name: Create valid AnsibleBlock and wait Ready=True
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "True"
+    definition:
+      apiVersion: blocks.krun.io/v1alpha1
+      kind: AnsibleBlock
+      metadata:
+        name: ansibleblock-test-valid
+      spec:
+        block:
+        - id: block-a
+          task: ansibletask-block-a
+        - id: block-b
+          task: ansibletask-block-b
+        rescue:
+        - id: rescue-a
+          task: ansibletask-block-a
+        always:
+        - id: always-a
+          task: ansibletask-block-b
+
+- name: Fetch valid AnsibleBlock status
+  k8s_info:
+    api_version: blocks.krun.io/v1alpha1
+    kind: AnsibleBlock
+    namespace: '{{ namespace }}'
+    name: ansibleblock-test-valid
+  register: ansibleblock_valid_info
+
+- name: Validate valid block acceptance
+  assert:
+    that:
+    - ansibleblock_valid_info.resources | length == 1
+    - ansibleblock_valid_info.resources[0].status.conditions is defined
+    - ansibleblock_valid_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length == 1
+    - ansibleblock_valid_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecAccepted') | list | length == 1
+
+- name: Create missing-reference AnsibleBlock and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: blocks.krun.io/v1alpha1
+      kind: AnsibleBlock
+      metadata:
+        name: ansibleblock-test-missing-ref
+      spec:
+        block:
+        - id: block-missing
+          task: ansibletask-missing
+
+- name: Fetch missing-reference AnsibleBlock status
+  k8s_info:
+    api_version: blocks.krun.io/v1alpha1
+    kind: AnsibleBlock
+    namespace: '{{ namespace }}'
+    name: ansibleblock-test-missing-ref
+  register: ansibleblock_missing_info
+
+- name: Validate missing-reference block status
+  assert:
+    that:
+    - ansibleblock_missing_info.resources | length == 1
+    - ansibleblock_missing_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansibleblock_missing_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'TaskReferenceNotFound') | list | length == 1
+
+- name: Create duplicate-id AnsibleBlock and wait Ready=False
+  k8s:
+    state: present
+    namespace: '{{ namespace }}'
+    wait: yes
+    wait_timeout: 300
+    wait_condition:
+      type: Ready
+      status: "False"
+    definition:
+      apiVersion: blocks.krun.io/v1alpha1
+      kind: AnsibleBlock
+      metadata:
+        name: ansibleblock-test-duplicate-id
+      spec:
+        block:
+        - id: same-id
+          task: ansibletask-block-a
+        - id: same-id
+          task: ansibletask-block-b
+
+- name: Fetch duplicate-id AnsibleBlock status
+  k8s_info:
+    api_version: blocks.krun.io/v1alpha1
+    kind: AnsibleBlock
+    namespace: '{{ namespace }}'
+    name: ansibleblock-test-duplicate-id
+  register: ansibleblock_duplicate_info
+
+- name: Validate duplicate-id block status
+  assert:
+    that:
+    - ansibleblock_duplicate_info.resources | length == 1
+    - ansibleblock_duplicate_info.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'False') | list | length == 1
+    - ansibleblock_duplicate_info.resources[0].status.conditions | selectattr('reason', 'equalto', 'SpecInvalid') | list | length == 1

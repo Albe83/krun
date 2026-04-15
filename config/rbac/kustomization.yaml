@@ -28,3 +28,6 @@ resources:
 - ansiblerole_admin_role.yaml
 - ansiblerole_editor_role.yaml
 - ansiblerole_viewer_role.yaml
+- ansibleblock_admin_role.yaml
+- ansibleblock_editor_role.yaml
+- ansibleblock_viewer_role.yaml

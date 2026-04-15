@@ -1,0 +1,8 @@
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: ansibleblock-example-01-minimal
+spec:
+  block:
+  - id: block-step-a
+    task: ansibletask-sample

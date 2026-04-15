@@ -1,0 +1,16 @@
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: ansibleblock-example-02-with-rescue-always
+spec:
+  block:
+  - id: block-a
+    task: ansibletask-sample
+  - id: block-b
+    task: ansibletask-sample
+  rescue:
+  - id: rescue-a
+    task: ansibletask-sample
+  always:
+  - id: always-a
+    task: ansibletask-sample

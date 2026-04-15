@@ -1,0 +1,125 @@
+---
+# This role models block semantics only.
+# It validates AnsibleTask references and publishes acceptance status.
+
+- name: Build block sections with defaults
+  set_fact:
+    ansibleblock_sections:
+      block: "{{ ansibleblock_spec.block | default([]) }}"
+      rescue: "{{ ansibleblock_spec.rescue | default([]) }}"
+      always: "{{ ansibleblock_spec.always | default([]) }}"
+
+- name: Initialize validation errors
+  set_fact:
+    ansibleblock_validation_errors: []
+
+- name: Validate required block section
+  set_fact:
+    ansibleblock_validation_errors: "{{ ansibleblock_validation_errors + ['spec.block is required and must contain at least one item'] }}"
+  when: ansibleblock_sections.block | length == 0
+
+- name: Validate section item shape
+  set_fact:
+    ansibleblock_validation_errors: "{{ ansibleblock_validation_errors + [item.0.key ~ '[' ~ entry_index ~ '] must be an object with non-empty id and task'] }}"
+  vars:
+    entry_index: "{{ ansibleblock_shape_index | string }}"
+  loop: "{{ query('subelements', ansibleblock_sections | dict2items, 'value') }}"
+  loop_control:
+    index_var: ansibleblock_shape_index
+  when:
+  - item.1 is not mapping or item.1.id is not defined or item.1.task is not defined or (item.1.id | string | length) == 0 or (item.1.task | string | length) == 0
+
+- name: Validate unique ids per section
+  set_fact:
+    ansibleblock_validation_errors: "{{ ansibleblock_validation_errors + [item.key ~ ' contains duplicated id values'] }}"
+  vars:
+    ids: "{{ item.value | map(attribute='id') | list }}"
+  loop: "{{ ansibleblock_sections | dict2items }}"
+  when:
+  - item.value | length > 0
+  - (ids | length) != (ids | unique | length)
+
+- name: Mark spec validation status
+  set_fact:
+    ansibleblock_spec_valid: "{{ (ansibleblock_validation_errors | length) == 0 }}"
+
+- name: Build normalized semantic model
+  set_fact:
+    ansibleblock_semantic:
+      name: "{{ ansible_operator_meta.name }}"
+      block: "{{ ansibleblock_sections.block }}"
+      rescue: "{{ ansibleblock_sections.rescue }}"
+      always: "{{ ansibleblock_sections.always }}"
+  when: ansibleblock_spec_valid
+
+- name: Build distinct AnsibleTask references
+  set_fact:
+    ansibleblock_referenced_tasks: >-
+      {{
+        (
+          ansibleblock_sections.block
+          + ansibleblock_sections.rescue
+          + ansibleblock_sections.always
+        )
+        | map(attribute='task')
+        | list
+        | unique
+      }}
+  when: ansibleblock_spec_valid
+
+- name: Resolve referenced AnsibleTasks
+  kubernetes.core.k8s_info:
+    api_version: tasks.krun.io/v1alpha1
+    kind: AnsibleTask
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    name: "{{ item }}"
+  loop: "{{ ansibleblock_referenced_tasks | default([]) }}"
+  register: ansibleblock_task_lookups
+  when: ansibleblock_spec_valid
+
+- name: Collect missing AnsibleTask references
+  set_fact:
+    ansibleblock_missing_task_refs: "{{ ansibleblock_task_lookups.results | selectattr('resources', 'equalto', []) | map(attribute='item') | list }}"
+  when: ansibleblock_spec_valid
+
+- name: Compose status outcome for invalid spec
+  set_fact:
+    ansibleblock_ready_status: "False"
+    ansibleblock_ready_reason: "SpecInvalid"
+    ansibleblock_ready_message: "{{ ansibleblock_validation_errors | join('; ') }}"
+  when: not ansibleblock_spec_valid
+
+- name: Compose status outcome for missing references
+  set_fact:
+    ansibleblock_ready_status: "False"
+    ansibleblock_ready_reason: "TaskReferenceNotFound"
+    ansibleblock_ready_message: "Missing AnsibleTask references: {{ ansibleblock_missing_task_refs | join(', ') }}"
+  when:
+  - ansibleblock_spec_valid
+  - (ansibleblock_missing_task_refs | default([]) | length) > 0
+
+- name: Compose status outcome for accepted semantics
+  set_fact:
+    ansibleblock_ready_status: "True"
+    ansibleblock_ready_reason: "SpecAccepted"
+    ansibleblock_ready_message: "Block semantics accepted with {{ ansibleblock_referenced_tasks | length }} referenced task(s)"
+  when:
+  - ansibleblock_spec_valid
+  - (ansibleblock_missing_task_refs | default([]) | length) == 0
+
+- name: Publish semantic status
+  operator_sdk.util.k8s_status:
+    api_version: blocks.krun.io/v1alpha1
+    kind: AnsibleBlock
+    name: "{{ ansible_operator_meta.name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+    status:
+      observedGeneration: "{{ ansible_operator_meta.generation | int }}"
+      message: "{{ ansibleblock_ready_message }}"
+      conditions:
+      - type: Ready
+        status: "{{ ansibleblock_ready_status }}"
+        reason: "{{ ansibleblock_ready_reason }}"
+        message: "{{ ansibleblock_ready_message }}"
+        lastTransitionTime: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        observedGeneration: "{{ ansible_operator_meta.generation | int }}"

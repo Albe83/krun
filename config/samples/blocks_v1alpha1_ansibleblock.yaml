@@ -1,0 +1,17 @@
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  labels:
+    app.kubernetes.io/name: krun
+    app.kubernetes.io/managed-by: kustomize
+  name: ansibleblock-sample
+spec:
+  block:
+  - id: block-step-a
+    task: ansibletask-sample
+  rescue:
+  - id: rescue-step-a
+    task: ansibletask-sample
+  always:
+  - id: always-step-a
+    task: ansibletask-sample

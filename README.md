@@ -21,6 +21,9 @@ Current CRDs:
 - `AnsibleRole` (`roles.krun.io/v1alpha1`): semantic composition of `AnsibleTask` references across role phases.
   - required: `spec.tasks` (`{id, task}` items)
   - optional: `spec.preTasks`, `spec.postTasks`, `spec.handlers`
+- `AnsibleBlock` (`blocks.krun.io/v1alpha1`): semantic composition of `AnsibleTask` references across block phases.
+  - required: `spec.block` (`{id, task}` items)
+  - optional: `spec.rescue`, `spec.always`
 
 This milestone models semantics only. It does not execute remote hosts or inventories yet.
 
@@ -33,6 +36,7 @@ Key technical decisions are documented as ADRs in [`docs/adr`](./docs/adr/README
 Detailed references:
 - [`docs/crd/ansibletask.md`](./docs/crd/ansibletask.md)
 - [`docs/crd/ansiblerole.md`](./docs/crd/ansiblerole.md)
+- [`docs/crd/ansibleblock.md`](./docs/crd/ansibleblock.md)
 
 ## CI
 
@@ -41,7 +45,7 @@ GitHub Actions build sanity workflow:
 
 It validates:
 - `kubectl kustomize` rendering for `config/crd`, `config/samples`, and `config/default`
-- YAML sanity for `AnsibleTask` and `AnsibleRole` samples/examples
+- YAML sanity for `AnsibleTask`, `AnsibleRole`, and `AnsibleBlock` samples/examples
 - Docker image build for the operator runtime image
 
 ## Artifact
@@ -59,6 +63,7 @@ The CI publishes an executable operator image to GHCR:
 
 Progressive `AnsibleTask` examples are available in [`docs/examples/ansibletask`](./docs/examples/ansibletask/README.md).
 Progressive `AnsibleRole` examples are available in [`docs/examples/ansiblerole`](./docs/examples/ansiblerole/README.md).
+Progressive `AnsibleBlock` examples are available in [`docs/examples/ansibleblock`](./docs/examples/ansibleblock/README.md).
 
 ## Quickstart
 
@@ -66,6 +71,7 @@ Progressive `AnsibleRole` examples are available in [`docs/examples/ansiblerole`
 make install
 kubectl apply -f config/samples/tasks_v1alpha1_ansibletask.yaml
 kubectl apply -f config/samples/roles_v1alpha1_ansiblerole.yaml
+kubectl apply -f config/samples/blocks_v1alpha1_ansibleblock.yaml
 ```
 
 Run the operator locally:
@@ -78,4 +84,5 @@ Inspect resource schema:
 
 ```bash
 kubectl explain ansibletasks.spec
+kubectl explain ansibleblocks.spec
 ```

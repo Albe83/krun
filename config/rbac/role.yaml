@@ -71,4 +71,21 @@ rules:
       - patch
       - update
       - watch
+  ##
+  ## Rules for blocks.krun.io/v1alpha1, Kind: AnsibleBlock
+  ##
+  - apiGroups:
+      - blocks.krun.io
+    resources:
+      - ansibleblocks
+      - ansibleblocks/status
+      - ansibleblocks/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 # +kubebuilder:scaffold:rules

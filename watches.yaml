@@ -9,4 +9,9 @@
   kind: AnsibleRole
   role: ansiblerole
   reconcilePeriod: 60s
+- version: v1alpha1
+  group: blocks.krun.io
+  kind: AnsibleBlock
+  role: ansibleblock
+  reconcilePeriod: 60s
 # +kubebuilder:scaffold:watch

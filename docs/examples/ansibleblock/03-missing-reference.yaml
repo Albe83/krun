@@ -1,0 +1,8 @@
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: ansibleblock-example-03-missing-reference
+spec:
+  block:
+  - id: block-missing
+    task: ansibletask-does-not-exist

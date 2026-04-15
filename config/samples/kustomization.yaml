@@ -2,4 +2,5 @@
 resources:
 - tasks_v1alpha1_ansibletask.yaml
 - roles_v1alpha1_ansiblerole.yaml
+- blocks_v1alpha1_ansibleblock.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

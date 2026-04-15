@@ -4,4 +4,5 @@
 resources:
 - bases/tasks.krun.io_ansibletasks.yaml
 - bases/roles.krun.io_ansibleroles.yaml
+- bases/blocks.krun.io_ansibleblocks.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
