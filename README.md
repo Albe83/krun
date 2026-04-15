@@ -28,6 +28,18 @@ GitHub Actions build sanity workflow:
 It validates:
 - `kubectl kustomize` rendering for `config/crd`, `config/samples`, and `config/default`
 - YAML sanity for `AnsibleTask` samples/examples (`kind`, required `spec.action`, and no `spec.name`)
+- Docker image build for the operator runtime image
+
+## Artifact
+
+The CI publishes an executable operator image to GHCR:
+- image: `ghcr.io/<owner>/krun`
+- tags:
+  - `sha-<commit>` (immutable)
+  - `latest` (updated on `main`)
+- publish policy:
+  - pull requests: build only (no push)
+  - `main`: build + push
 
 ## Examples
 
