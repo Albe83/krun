@@ -1,0 +1,155 @@
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-install-package
+spec:
+  action: ansible.builtin.package
+  args:
+    name: nginx
+    state: present
+  become: true
+  register: nginx_pkg_result
+  changedWhen: "nginx_pkg_result.changed | default(false)"
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-assert-package-installed
+spec:
+  action: ansible.builtin.assert
+  args:
+    that:
+    - "nginx_pkg_result is defined"
+    - "(nginx_pkg_result.failed | default(false)) == false"
+    fail_msg: "Nginx package installation failed"
+    success_msg: "Nginx package installation result is valid"
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-deploy-config
+spec:
+  action: ansible.builtin.copy
+  args:
+    dest: /etc/nginx/conf.d/app.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      server {
+        listen 80;
+        server_name _;
+
+        location /healthz {
+          return 200 'ok';
+        }
+
+        location / {
+          return 200 'hello from krun nginx example';
+        }
+      }
+  become: true
+  register: nginx_cfg_result
+  changedWhen: "nginx_cfg_result.changed | default(false)"
+  notify:
+  - nginx-handler-block
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-validate-config
+spec:
+  action: ansible.builtin.command
+  args:
+    cmd: nginx -t
+  become: true
+  register: nginx_validate_result
+  changedWhen: "false"
+  failedWhen: "nginx_validate_result.rc != 0"
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-enable-start-service
+spec:
+  action: ansible.builtin.service
+  args:
+    name: nginx
+    enabled: true
+    state: started
+  become: true
+  register: nginx_service_result
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-assert-service-active
+spec:
+  action: ansible.builtin.assert
+  args:
+    that:
+    - "nginx_service_result is defined"
+    - "(nginx_service_result.failed | default(false)) == false"
+    fail_msg: "Nginx service could not be started"
+    success_msg: "Nginx service state looks correct"
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-rollback-config
+spec:
+  action: ansible.builtin.file
+  args:
+    path: /etc/nginx/conf.d/app.conf
+    state: absent
+  become: true
+  register: nginx_rollback_result
+  changedWhen: "nginx_rollback_result.changed | default(false)"
+  ignoreErrors: true
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-assert-rollout-summary
+spec:
+  action: ansible.builtin.assert
+  args:
+    that:
+    - "nginx_validate_result is defined"
+    - "(nginx_validate_result.rc | default(1)) == 0"
+    fail_msg: "Nginx rollout validation failed"
+    success_msg: "Nginx rollout validation succeeded"
+  ignoreErrors: true
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-handler-reload
+spec:
+  action: ansible.builtin.service
+  args:
+    name: nginx
+    state: reloaded
+  become: true
+  register: nginx_reload_result
+
+---
+apiVersion: tasks.krun.io/v1alpha1
+kind: AnsibleTask
+metadata:
+  name: task-nginx-handler-restart
+spec:
+  action: ansible.builtin.service
+  args:
+    name: nginx
+    state: restarted
+  become: true
+  register: nginx_restart_result

@@ -1,0 +1,45 @@
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: nginx-install-block
+spec:
+  block:
+  - id: install-package
+    task: task-nginx-install-package
+  - id: assert-package
+    task: task-nginx-assert-package-installed
+
+---
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: nginx-configure-block
+spec:
+  block:
+  - id: deploy-config
+    task: task-nginx-deploy-config
+  - id: validate-config
+    task: task-nginx-validate-config
+  - id: enable-start
+    task: task-nginx-enable-start-service
+  - id: assert-service
+    task: task-nginx-assert-service-active
+  rescue:
+  - id: rollback-config
+    task: task-nginx-rollback-config
+  always:
+  - id: rollout-summary
+    task: task-nginx-assert-rollout-summary
+
+---
+apiVersion: blocks.krun.io/v1alpha1
+kind: AnsibleBlock
+metadata:
+  name: nginx-handler-block
+spec:
+  block:
+  - id: reload-nginx
+    task: task-nginx-handler-reload
+  rescue:
+  - id: restart-nginx
+    task: task-nginx-handler-restart

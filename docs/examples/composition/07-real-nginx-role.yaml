@@ -1,0 +1,19 @@
+apiVersion: roles.krun.io/v1alpha1
+kind: AnsibleRole
+metadata:
+  name: role-nginx-realistic
+spec:
+  preTasks:
+  - id: install-nginx
+    block: nginx-install-block
+  tasks:
+  - id: configure-nginx
+    block: nginx-configure-block
+  - id: direct-validate-config
+    task: task-nginx-validate-config
+  handlers:
+  - id: nginx-handler-block
+    block: nginx-handler-block
+  postTasks:
+  - id: rollout-final-assert
+    task: task-nginx-assert-rollout-summary
